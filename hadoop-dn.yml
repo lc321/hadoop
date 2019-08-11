@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: hadoop-datanode
+  labels:
+    app: hadoop-datanode
+spec:
+  replicas: 1
+  selector:
+    name: hadoop-datanode
+  template:
+    metadata:
+      labels:
+        name: hadoop-datanode
+    spec:
+      containers:
+        - name: hadoop-datanode-1
+          image: kubeguide/hadoop:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9000
+            - containerPort: 50070    
+          env:
+            - name: HADOOP_NODE_TYPE
+              value: datanode
+            - name: HDFS_MASTER_SERVICE
+              valueFrom:
+                configMapKeyRef:
+                  name: kube-hadoop-conf
+                  key: HDFS_MASTER_SERVICE
+          volumeMounts:
+            - name: hdfs-node-data
+              mountPath: /root/hdfs/datanode
+              subPath: datanode
+            - name: hdfs-node-data
+              mountPath: /root/hdfs/tmp
+              subPath: tmp
+            - name: core-site-conf
+              mountPath: /usr/local/hadoop/etc/hadoop/core-site.xml
+              subPath: core-site.xml
+            - name: start-conf
+              mountPath: /root/startnode.sh
+              subPath: startnode.sh
+          command: ["/bin/sh","-c","/root/startnode.sh"]
+      volumes:
+        - name: hdfs-node-data
+          persistentVolumeClaim:
+            claimName: hdfs-node-pvc-data
+        - name: core-site-conf
+          configMap:
+            name: hdfs-conf
+            items:
+              - key: core-site.xml
+                path: core-site.xml
+        - name: start-conf
+          configMap:
+            name: hdfs-conf
+            defaultMode: 0751
+            items:
+              - key: startnode.sh
+                path: startnode.sh
+      restartPolicy: Always

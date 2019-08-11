@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kube-hadoop-conf
+data:
+  HDFS_MASTER_SERVICE: hadoop-hdfs-master
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hadoop-hdfs-master
+spec:
+  type: NodePort
+  selector:
+    name: hdfs-master
+  ports:
+    - name: rpc
+      port: 9000
+      targetPort: 9000
+    - name: http
+      port: 50070
+      targetPort: 50070
+      nodePort: 32003
+---
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: hdfs-master
+  labels:
+    name: hdfs-master
+spec:
+  replicas: 1
+  selector:
+    name: hdfs-master
+  template:
+    metadata:
+      labels:
+        name: hdfs-master
+    spec:
+      containers:
+        - name: hdfs-master
+          image: kubeguide/hadoop:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9000
+            - containerPort: 50070    
+          env:
+            - name: HADOOP_NODE_TYPE
+              value: namenode
+            - name: HDFS_MASTER_SERVICE
+              valueFrom:
+                configMapKeyRef:
+                  name: kube-hadoop-conf
+                  key: HDFS_MASTER_SERVICE
+          volumeMounts:
+            - name: hdfs-master-data
+              mountPath: /root/hdfs/namenode
+              subPath: namenode
+            - name: hdfs-master-data
+              mountPath: /root/hdfs/tmp
+              subPath: tmp
+            - name: core-site-conf
+              mountPath: /usr/local/hadoop/etc/hadoop/core-site.xml
+              subPath: core-site.xml
+            - name: start-conf
+              mountPath: /root/startnode.sh
+              subPath: startnode.sh
+          command: ["/bin/sh","-c","/root/startnode.sh"]
+      volumes:
+        - name: hdfs-master-data
+          persistentVolumeClaim:
+            claimName: hdfs-master-pvc-data
+        - name: core-site-conf
+          configMap:
+            name: hdfs-conf
+            items:
+              - key: core-site.xml
+                path: core-site.xml
+        - name: start-conf
+          configMap:
+            name: hdfs-conf
+            defaultMode: 0751
+            items:
+              - key: startnode.sh
+                path: startnode.sh
+      restartPolicy: Always
