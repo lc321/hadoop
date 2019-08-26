@@ -19,7 +19,8 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 9000
-            - containerPort: 50070    
+            - containerPort: 50070
+            - containerPort: 50075
           env:
             - name: HADOOP_NODE_TYPE
               value: datanode
@@ -38,6 +39,9 @@ spec:
             - name: core-site-conf
               mountPath: /usr/local/hadoop/etc/hadoop/core-site.xml
               subPath: core-site.xml
+            - name: hdfs-site-conf
+              mountPath: /usr/local/hadoop/etc/hadoop/hdfs-site.xml
+              subPath: hdfs-site.xml
             - name: start-conf
               mountPath: /root/startnode.sh
               subPath: startnode.sh
@@ -52,6 +56,12 @@ spec:
             items:
               - key: core-site.xml
                 path: core-site.xml
+        - name: hdfs-site-conf
+          configMap:
+            name: hdfs-conf
+            items:
+              - key: hdfs-site.xml
+                path: hdfs-site.xml
         - name: start-conf
           configMap:
             name: hdfs-conf

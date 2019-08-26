@@ -21,6 +21,10 @@ spec:
       port: 50070
       targetPort: 50070
       nodePort: 32003
+    - name: spring-demo
+      port: 8080
+      targetPort: 8080
+      nodePort: 32004
 ---
 apiVersion: v1
 kind: ReplicationController
@@ -38,7 +42,7 @@ spec:
         name: hdfs-master
     spec:
       containers:
-        - name: hdfs-master
+        - name: hdfs-master-1
           image: kubeguide/hadoop:latest
           imagePullPolicy: IfNotPresent
           ports:
@@ -62,11 +66,28 @@ spec:
             - name: core-site-conf
               mountPath: /usr/local/hadoop/etc/hadoop/core-site.xml
               subPath: core-site.xml
+            - name: hdfs-site-conf
+              mountPath: /usr/local/hadoop/etc/hadoop/hdfs-site.xml
+              subPath: hdfs-site.xml
             - name: start-conf
               mountPath: /root/startnode.sh
               subPath: startnode.sh
+            - name: tmp-dir
+              mountPath: /usr/upload
           command: ["/bin/sh","-c","/root/startnode.sh"]
+        - name: example-demo
+          image: spring-hadoop:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          volumeMounts:
+            - name: tmp-dir
+              mountPath: /usr/upload
       volumes:
+        - name: tmp-dir
+          hostPath:
+            path: /root/test/tmp
         - name: hdfs-master-data
           persistentVolumeClaim:
             claimName: hdfs-master-pvc-data
@@ -76,6 +97,12 @@ spec:
             items:
               - key: core-site.xml
                 path: core-site.xml
+        - name: hdfs-site-conf
+          configMap:
+            name: hdfs-conf
+            items:
+              - key: hdfs-site.xml
+                path: hdfs-site.xml
         - name: start-conf
           configMap:
             name: hdfs-conf
